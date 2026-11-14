@@ -1,6 +1,4 @@
 <!doctype html>
-<html lang="fr">
-<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="color-scheme" content="light dark">
@@ -9,9 +7,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Tourne la roue">
 <title>Tourne la roue</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='31' fill='%23232a4d'/%3E%3Cpath d='M32 32V6a26 26 0 0 1 26 26z' fill='%23D93D42'/%3E%3Cpath d='M32 32h26a26 26 0 0 1-26 26z' fill='%23F5B301'/%3E%3Cpath d='M32 32v26A26 26 0 0 1 6 32z' fill='%230C8599'/%3E%3Cpath d='M32 32H6A26 26 0 0 1 32 6z' fill='%237048E8'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%23fff'/%3E%3C/svg%3E">
 <script>
-/* Applique le thème choisi avant le premier affichage (évite un flash). */
+/* Applique le thème choisi avant le premier affichage (évite un flash).
+   On retient d'abord le thème imposé par la page hôte, pour y revenir en mode « Auto ». */
+document.documentElement.lang = 'fr';
+window.__hostTheme = document.documentElement.getAttribute('data-theme');
 try {
   var s = JSON.parse(localStorage.getItem('tourne-la-roue:v1') || '{}').settings;
   if (s && (s.theme === 'light' || s.theme === 'dark')) document.documentElement.setAttribute('data-theme', s.theme);
@@ -93,6 +95,7 @@ try {
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 html, body { height: 100%; }
 body {
   margin: 0;
@@ -118,14 +121,15 @@ h2 { margin: 0; font-size: 20px; }
 
 /* ---------- Écran principal ---------- */
 .app {
-  height: 100vh;
-  height: 100dvh;
+  height: 100%;
   max-width: 640px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  padding-block: 12px 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 .panel { display: contents; }
 .top { order: 1; }
@@ -302,7 +306,7 @@ h2 { margin: 0; font-size: 20px; }
   background: var(--surface);
   border-radius: 24px 24px 0 0;
   box-shadow: 0 -8px 40px rgba(0, 0, 0, .25);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   transform: translateY(104%);
   visibility: hidden;
   transition: transform .3s cubic-bezier(.2, .85, .25, 1), visibility 0s .3s;
@@ -430,7 +434,7 @@ h2 { margin: 0; font-size: 20px; }
 }
 .modal.show .card { transform: none; }
 .card h3 { margin: 0 0 6px; font-size: 19px; }
-.card p { margin: 0 0 14px; color: var(--muted); }
+.card p { margin: 0 0 14px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 46vh; overflow: auto; }
 .card .field { width: 100%; margin: 8px 0 16px; }
 .actions { display: flex; gap: 10px; }
 .actions .btn { flex: 1; }
@@ -451,7 +455,7 @@ h2 { margin: 0; font-size: 20px; }
 
 .toast {
   position: fixed; left: 16px; right: 16px; z-index: 70;
-  bottom: calc(env(safe-area-inset-bottom) + 86px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 86px);
   width: -webkit-fit-content; width: fit-content;
   max-width: min(calc(100% - 32px), 420px);
   margin: 0 auto;
@@ -486,8 +490,6 @@ h2 { margin: 0; font-size: 20px; }
   .bulbs circle { animation: none !important; }
 }
 </style>
-</head>
-<body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
@@ -1404,7 +1406,7 @@ function renderNames() {
   ul.textContent = '';
   list.entries.forEach(e => {
     const li = el('li', { class: 'row' + (e.on ? '' : ' off') });
-    const chk = el('input', { type: 'checkbox', class: 'chk', 'aria-label': e.name + ' : sur la roue' });
+    const chk = el('input', { type: 'checkbox', class: 'chk', id: 'chk-' + e.id, 'aria-label': e.name + ' : sur la roue' });
     chk.checked = e.on;
     chk.onchange = () => { e.on = chk.checked; save(); render(); };
     const nm = el('button', { class: 'nm', type: 'button', text: e.name, 'aria-label': 'Modifier ' + e.name });
@@ -1535,12 +1537,14 @@ function renderHistory() {
 async function shareHistory() {
   const lines = state.history.slice().reverse().map((h, i) => (i + 1) + '. ' + h.name + (h.prize ? ' — ' + h.prize : ''));
   const text = 'Résultats du tirage\n' + lines.join('\n');
-  if (navigator.share) {
+  let framed = true;
+  try { framed = window.self !== window.top; } catch (e) {}
+  if (navigator.share && !framed) {
     try { await navigator.share({ text }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
   }
   try {
     await navigator.clipboard.writeText(text);
-    toast('Résultats copiés');
+    toast('Résultats copiés : colle-les dans un message');
   } catch (e) {
     const ta = el('textarea', { style: 'position:fixed;opacity:0;top:0;left:0' });
     ta.value = text;
@@ -1549,7 +1553,8 @@ async function shareHistory() {
     let ok = false;
     try { ok = document.execCommand('copy'); } catch (err) {}
     ta.remove();
-    toast(ok ? 'Résultats copiés' : 'Copie impossible sur ce navigateur');
+    if (ok) toast('Résultats copiés : colle-les dans un message');
+    else ask({ title: 'Sélectionne le texte pour le copier', text, ok: 'Fermer' });
   }
 }
 $('#histShare').onclick = shareHistory;
@@ -1559,12 +1564,27 @@ $('#histClear').onclick = async () => {
 };
 
 /* ================= Options ================= */
+/* « Auto » suit le thème de la page hôte s'il y en a un, sinon celui du téléphone. */
+let hostTheme = window.__hostTheme === 'light' || window.__hostTheme === 'dark' ? window.__hostTheme : null;
 function applyTheme() {
   const t = state.settings.theme;
-  if (t === 'auto') root.removeAttribute('data-theme');
-  else root.setAttribute('data-theme', t);
-  const dark = t === 'dark' || (t === 'auto' && mqDark.matches);
-  $('meta[name="theme-color"]').setAttribute('content', dark ? '#0b1020' : '#f3efe6');
+  const want = t === 'auto' ? hostTheme : t;
+  if (root.getAttribute('data-theme') !== want) {
+    if (want) root.setAttribute('data-theme', want);
+    else root.removeAttribute('data-theme');
+  }
+  const dark = want ? want === 'dark' : mqDark.matches;
+  const meta = $('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#0b1020' : '#f3efe6');
+}
+if (window.MutationObserver) {
+  new MutationObserver(() => {
+    const now = root.getAttribute('data-theme');
+    const t = state.settings.theme;
+    if (now === (t === 'auto' ? hostTheme : t)) return;   /* c'est notre propre changement */
+    hostTheme = now === 'light' || now === 'dark' ? now : null;
+    applyTheme();
+  }).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
 }
 
 function renderSettings() {
@@ -1671,5 +1691,3 @@ render();
 layout();
 })();
 </script>
-</body>
-</html>
